@@ -14,6 +14,7 @@ import com.blockblast.solver.solver.BlockSolver;
 /**
  * Transparent overlay View drawn on top of all apps via WindowManager.
  * Draws coloured highlight rectangles showing the best placement positions.
+ * Enhanced with physical piece-tray bounds visualization grids.
  */
 public class OverlayView extends View {
 
@@ -70,6 +71,46 @@ public class OverlayView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        // Draw the diagnostic tray frames even if placements solver logic hasn't completed yet
+        float screenW = canvas.getWidth();
+        float screenH = canvas.getHeight();
+        
+        // Dynamic horizontal layout markers matching BoardDetector centers (15%, 50%, 83%)
+        float[] pieceCenterPct = { 0.15f, 0.50f, 0.83f };
+        float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
+        float debugCellSize = currentCellW * 0.60f; // matches shrunken piece grid size
+
+        // --- VISUAL CALIBRATION DEBUG GRIDS ---
+        if (boardLeft > 0 && trayTop > 0) {
+            Paint debugPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            debugPaint.setStyle(Paint.Style.STROKE);
+            debugPaint.setStrokeWidth(4f);
+            
+            float cy = trayTop + (trayBottom - trayTop) / 2;
+
+            for (int p = 0; p < 3; p++) {
+                float cx = pieceCenterPct[p] * screenW;
+
+                // 1. Draw outer green box container showing the 5x5 piece detection grid bounds
+                debugPaint.setColor(Color.GREEN);
+                debugPaint.setStyle(Paint.Style.STROKE);
+                canvas.drawRect(cx - (debugCellSize * 2.5f), cy - (debugCellSize * 2.5f), 
+                                cx + (debugCellSize * 2.5f), cy + (debugCellSize * 2.5f), debugPaint);
+
+                // 2. Draw individual small red verification dots at the 25 matrix scan points
+                debugPaint.setColor(Color.RED);
+                debugPaint.setStyle(Paint.Style.FILL);
+                for (int dr = -2; dr <= 2; dr++) {
+                    for (int dc = -2; dc <= 2; dc++) {
+                        float px = cx + dc * debugCellSize;
+                        float py = cy + dr * debugCellSize;
+                        canvas.drawCircle(px, py, 6f, debugPaint);
+                    }
+                }
+            }
+        }
+
+        // Keep standard placement solver execution running
         if (placements == null) return;
 
         float cellW = (boardRight - boardLeft) / BoardDetector.GRID;
