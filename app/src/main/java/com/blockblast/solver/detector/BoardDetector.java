@@ -16,7 +16,6 @@ public class BoardDetector {
     public static final float TRAY_TOP_PCT     = 0.745f; 
     public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
-    // ADJUSTED: Spaced out the left and right tracking columns to match the screen pieces
     public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.81f };
 
     public boolean[][] board = new boolean[GRID][GRID];
@@ -59,40 +58,42 @@ public class BoardDetector {
             }
         }
 
-       // 2. Scan Pieces via Matrix Points
-int trayH = debugTrayBottom - debugTrayTop;
-int cy = debugTrayTop + trayH / 2;
+        // 2. Scan Pieces via Position-Aware Matrix Points
+        int trayH = debugTrayBottom - debugTrayTop;
+        int cy = debugTrayTop + trayH / 2;
 
-for (int p = 0; p < PIECES; p++) {
-    int cx = debugPieceX[p];
+        for (int p = 0; p < PIECES; p++) {
+            int cx = debugPieceX[p];
 
-    for (int dr = -2; dr <= 2; dr++) {
-        for (int dc = -2; dc <= 2; dc++) {
-            
-            // ADJUSTMENT: Apply a half-cell shift to perfectly hit the center of 
-            // even-sized blocks (like 2x2) instead of hitting their intersection cracks.
-            float rowOffset = dr;
-            float colOffset = dc;
-            
-            // Small positional correction to pull the sampling array inward 
-            // so dots land in the dead-center of the block squares
-            int px = cx + (int)(colOffset * debugCellSize);
-            int py = cy + (int)(rowOffset * debugCellSize);
-            
-            int r  = dr + 2;
-            int c  = dc + 2;
+            // ADJUSTED: Shift left (p=0) and right (p=2) slots down to match the pieces
+            int slotCy = cy;
+            if (p == 0 || p == 2) {
+                slotCy = cy + (int)(debugCellSize * 0.30f); 
+            }
 
-            if (px >= 0 && px < W && py >= 0 && py < H) {
-                int color = bmp.getPixel(px, py);
-                int redVal = (color >> 16) & 0xFF; 
-                int greenVal = (color >> 8) & 0xFF; 
-                int blueVal = color & 0xFF;
-                int luma = (int)(0.299 * redVal + 0.587 * greenVal + 0.114 * blueVal);
-                
-                pieces[p][r][c] = (luma > 75);
+            for (int dr = -2; dr <= 2; dr++) {
+                for (int dc = -2; dc <= 2; dc++) {
+                    
+                    float rowOffset = dr;
+                    float colOffset = dc;
+                    
+                    int px = cx + (int)(colOffset * debugCellSize);
+                    int py = slotCy + (int)(rowOffset * debugCellSize);
+                    
+                    int r  = dr + 2;
+                    int c  = dc + 2;
+
+                    if (px >= 0 && px < W && py >= 0 && py < H) {
+                        int color = bmp.getPixel(px, py);
+                        int redVal = (color >> 16) & 0xFF; 
+                        int greenVal = (color >> 8) & 0xFF; 
+                        int blueVal = color & 0xFF;
+                        int luma = (int)(0.299 * redVal + 0.587 * greenVal + 0.114 * blueVal);
+                        
+                        pieces[p][r][c] = (luma > 75);
+                    }
+                }
             }
         }
-    }
-}
     }
 }
