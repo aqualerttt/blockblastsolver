@@ -10,32 +10,24 @@ import android.view.View;
 import com.blockblast.solver.detector.BoardDetector;
 import com.blockblast.solver.solver.BlockSolver;
 
-/**
- * Transparent overlay View drawn on top of all apps via WindowManager.
- * Draws coloured highlight rectangles showing the best placement positions.
- * Enhanced with physical piece-tray bounds visualization grids.
- */
 public class OverlayView extends View {
 
-    // Highlight colours per piece slot (semi-transparent)
     private static final int[] PIECE_COLORS = {
             0xAA00E5FF,   // cyan
             0xAAFFD600,   // yellow
             0xAAFF4081,   // pink
     };
 
-    private static final int BOARD_COLOR   = 0x330000FF; // faint blue tint on all filled cells
+    private static final int BOARD_COLOR   = 0x330000FF;
     private static final int STROKE_COLOR  = 0xFFFFFFFF;
 
     private final Paint fillPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    // Board layout (set from OverlayService after we know screen size)
     private float boardLeft, boardTop, boardRight, boardBottom;
     private float trayTop, trayBottom;
 
-    // Current solver output
     private BlockSolver.Placement[] placements;
     private boolean[][] board;
 
@@ -52,7 +44,6 @@ public class OverlayView extends View {
         gridPaint.setColor(0x44FFFFFF);
     }
 
-    /** Called by OverlayService with updated solver results. */
     public void update(boolean[][] board, BlockSolver.Placement[] placements,
                        int screenW, int screenH) {
         this.board      = board;
@@ -63,7 +54,6 @@ public class OverlayView extends View {
         boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
         boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
         
-        // Corrected local variables to pull the overlay rectangles down
         trayTop     = 0.745f * screenH;
         trayBottom  = 0.835f * screenH;
 
@@ -75,11 +65,13 @@ public class OverlayView extends View {
         float screenW = canvas.getWidth();
         float screenH = canvas.getHeight();
         
-        float[] pieceCenterPct = { 0.15f, 0.50f, 0.83f };
+        // MATCHED: Synchronized horizontal centers with detector changes
+        float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
         
-        // Fixed hardcoded mismatch: Changed 0.60f to exactly 0.38f
         float debugCellSize = currentCellW * 0.38f; 
+        // FIX: Independent bounding size so the green outer boxes display nicely
+        float greenBoxRadius = currentCellW * 1.3f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
         if (boardLeft > 0 && trayTop > 0) {
@@ -92,11 +84,11 @@ public class OverlayView extends View {
             for (int p = 0; p < 3; p++) {
                 float cx = pieceCenterPct[p] * screenW;
 
-                // 1. Draw outer green box container showing the 5x5 piece detection grid bounds
+                // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
                 debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - (debugCellSize * 2.5f), cy - (debugCellSize * 2.5f), 
-                                cx + (debugCellSize * 2.5f), cy + (debugCellSize * 2.5f), debugPaint);
+                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius, 
+                                cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
 
                 // 2. Draw individual small red verification dots at the 25 matrix scan points
                 debugPaint.setColor(Color.RED);
@@ -111,27 +103,22 @@ public class OverlayView extends View {
             }
         }
 
-        // Keep standard placement solver execution running
         if (placements == null) return;
 
         float cellW = (boardRight - boardLeft) / BoardDetector.GRID;
         float cellH = (boardBottom - boardTop) / BoardDetector.GRID;
 
-        // Draw faint grid over board
         for (int r = 0; r <= BoardDetector.GRID; r++)
-            canvas.drawLine(boardLeft, boardTop + r * cellH,
-                            boardRight, boardTop + r * cellH, gridPaint);
+            canvas.drawLine(boardLeft, boardTop + r * cellH, boardRight, boardTop + r * cellH, gridPaint);
         for (int c = 0; c <= BoardDetector.GRID; c++)
-            canvas.drawLine(boardLeft + c * cellW, boardTop,
-                            boardLeft + c * cellW, boardBottom, gridPaint);
+            canvas.drawLine(boardLeft + c * cellW, boardTop, boardLeft + c * cellW, boardBottom, gridPaint);
 
-        // Draw each piece's best placement
         for (int p = 0; p < placements.length; p++) {
             BlockSolver.Placement pl = placements[p];
             if (pl == null) continue;
 
             fillPaint.setColor(PIECE_COLORS[p]);
-            strokePaint.setColor(PIECE_COLORS[p] | 0xFF000000); // fully opaque stroke
+            strokePaint.setColor(PIECE_COLORS[p] | 0xFF000000);
 
             for (int r = 0; r < 5; r++) {
                 for (int c = 0; c < 5; c++) {
@@ -151,7 +138,6 @@ public class OverlayView extends View {
                 }
             }
 
-            // Label: P1, P2, P3
             fillPaint.setColor(Color.WHITE);
             fillPaint.setTextSize(36f);
             fillPaint.setStyle(Paint.Style.FILL);
@@ -160,7 +146,7 @@ public class OverlayView extends View {
                     boardLeft + first.col * cellW + 4,
                     boardTop  + first.row * cellH + 40,
                     fillPaint);
-            fillPaint.setStyle(Paint.Style.FILL); // reset
+            fillPaint.setStyle(Paint.Style.FILL);
         }
     }
 }
