@@ -19,10 +19,10 @@ public class BoardDetector {
     // These approximate Block Blast's layout on a typical 9:19.5 phone.
     // Users can tweak BOARD_TOP / BOARD_LEFT etc. via a calibration screen later.
 
-public static final float BOARD_TOP_PCT    = 0.238f; // Moved up from 0.245 to catch the true top edge
+public static final float BOARD_TOP_PCT    = 0.232f; // Stretched up from 0.238 to perfectly hit your 580y mark
 public static final float BOARD_LEFT_PCT   = 0.055f; // KEPT (Perfect!)
 public static final float BOARD_RIGHT_PCT  = 0.944f; // KEPT (Perfect!)
-public static final float BOARD_BOTTOM_PCT = 0.648f; // Moved down from 0.635 to reach the true bottom edge
+public static final float BOARD_BOTTOM_PCT = 0.654f; // Stretched down from 0.648 to perfectly hit your 1540y mark
 public static final float TRAY_TOP_PCT     = 0.720f;
 public static final float TRAY_BOTTOM_PCT  = 0.850f;
 
