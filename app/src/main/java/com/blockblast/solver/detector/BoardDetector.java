@@ -13,11 +13,11 @@ public class BoardDetector {
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
-    // Adjusted tray vertical bounds to shift detection lower
     public static final float TRAY_TOP_PCT     = 0.745f; 
     public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
-    public static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
+    // ADJUSTED: Spaced out the left and right tracking columns to match the screen pieces
+    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.81f };
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
@@ -40,8 +40,6 @@ public class BoardDetector {
 
         this.debugTrayTop = (int)(TRAY_TOP_PCT * H);
         this.debugTrayBottom = (int)(TRAY_BOTTOM_PCT * H);
-        
-        // Match tight spacing calculation (38% of cell width)
         this.debugCellSize = (int)(cellW * 0.38f); 
 
         for (int p = 0; p < PIECES; p++) {
