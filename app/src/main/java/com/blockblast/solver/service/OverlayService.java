@@ -139,9 +139,7 @@ public class OverlayService extends Service {
             BlockSolver.Placement[] placements =
                     BlockSolver.solve(detector.board, detector.pieces);
 
-            overlayView.update(detector.board, placements, screenW, screenH,
-                    detector.debugPieceX, detector.debugCellSize,
-                    detector.debugTrayTop + (detector.debugTrayBottom - detector.debugTrayTop) / 2);
+            overlayView.update(detector.board, placements, screenW, screenH);
             bmp.recycle();
         } finally {
             img.close();
