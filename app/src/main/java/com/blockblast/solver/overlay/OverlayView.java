@@ -65,12 +65,10 @@ public class OverlayView extends View {
         float screenW = canvas.getWidth();
         float screenH = canvas.getHeight();
         
-        // MATCHED: Synchronized horizontal centers with detector changes
         float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
         
         float debugCellSize = currentCellW * 0.38f; 
-        // FIX: Independent bounding size so the green outer boxes display nicely
         float greenBoxRadius = currentCellW * 1.3f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
@@ -84,25 +82,31 @@ public class OverlayView extends View {
             for (int p = 0; p < 3; p++) {
                 float cx = pieceCenterPct[p] * screenW;
 
+                // ADJUSTED: Match the detector shifts to lower grids 1 and 3
+                float slotCy = cy;
+                if (p == 0 || p == 2) {
+                    slotCy = cy + (debugCellSize * 0.30f);
+                }
+
                 // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
                 debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius, 
-                                cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
+                canvas.drawRect(cx - greenBoxRadius, slotCy - greenBoxRadius, 
+                                cx + greenBoxRadius, slotCy + greenBoxRadius, debugPaint);
 
                 // 2. Draw individual small red verification dots at the 25 matrix scan points
-debugPaint.setColor(Color.RED);
-debugPaint.setStyle(Paint.Style.FILL);
-for (int dr = -2; dr <= 2; dr++) {
-    for (int dc = -2; dc <= 2; dc++) {
-        float rowOffset = dr;
-        float colOffset = dc;
+                debugPaint.setColor(Color.RED);
+                debugPaint.setStyle(Paint.Style.FILL);
+                for (int dr = -2; dr <= 2; dr++) {
+                    for (int dc = -2; dc <= 2; dc++) {
+                        float rowOffset = dr;
+                        float colOffset = dc;
 
-        float px = cx + colOffset * debugCellSize;
-        float py = cy + rowOffset * debugCellSize;
-        canvas.drawCircle(px, py, 6f, debugPaint);
-    }
-}
+                        float px = cx + colOffset * debugCellSize;
+                        float py = slotCy + rowOffset * debugCellSize;
+                        canvas.drawCircle(px, py, 6f, debugPaint);
+                    }
+                }
             }
         }
 
