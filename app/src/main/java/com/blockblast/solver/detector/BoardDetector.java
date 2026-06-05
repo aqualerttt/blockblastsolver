@@ -11,17 +11,14 @@ public class BoardDetector {
     public static final int GRID = 8;
     public static final int PIECES = 3;
 
-    // Your perfect main board parameters
-    public static final float BOARD_TOP_PCT    = 0.228f;
+    public static final float BOARD_TOP_PCT    = 0.225f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
-    // Fallbacks
     public static final float TRAY_TOP_PCT     = 0.735f; 
     public static final float TRAY_BOTTOM_PCT  = 0.815f; 
 
-    // The horizontal centers for Left, Middle, and Right slots
     private static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
 
     public boolean[][] board = new boolean[GRID][GRID];
@@ -46,38 +43,41 @@ public class BoardDetector {
             }
         }
 
-        // --- IMPROVED ON-SCREEN RULER (SCANS ALL 3 SLOTS) ---
+        // --- EXPANDED VERTICAL SCAN RANGE ---
         int firstActiveY = -1;
         int lastActiveY = -1;
+        int detectedSlot = -1;
 
-        // Loop through all 3 slot X-coordinates
         for (int p = 0; p < PIECES; p++) {
             int targetX = (int)(PIECE_CENTER_X[p] * W);
             
-            // Scan vertically through the tray zone for this slot
-            for (int y = 1600; y < 2100; y++) {
+            // Expanded search range from Y = 1600 all the way down to Y = 2400
+            for (int y = 1600; y < 2400; y++) {
                 if (hasTextureContrast(bmp, targetX, y)) {
                     if (firstActiveY == -1) firstActiveY = y;
                     lastActiveY = y;
                 }
             }
             
-            // If we found a solid vertical stretch of pixels in this slot, stop looking!
-            if (firstActiveY != -1 && (lastActiveY - firstActiveY) > 100) {
+            if (firstActiveY != -1 && (lastActiveY - firstActiveY) > 50) {
+                detectedSlot = p + 1;
                 break;
             } else {
-                // Reset if it was just a tiny piece or random noise, try next slot
                 firstActiveY = -1;
                 lastActiveY = -1;
             }
         }
 
-        // If a significant piece block structure is found, show the bubble message
-        if (firstActiveY != -1 && lastActiveY != -1 && context != null) {
-            final float topPct = (float) firstActiveY / H;
-            final float bottomPct = (float) lastActiveY / H;
-            
-            final String message = "TOP: " + String.format("%.3f", topPct) + "f\nBOTTOM: " + String.format("%.3f", bottomPct) + "f";
+        if (context != null) {
+            final String message;
+            if (firstActiveY != -1 && lastActiveY != -1) {
+                float topPct = (float) firstActiveY / H;
+                float bottomPct = (float) lastActiveY / H;
+                message = "Slot " + detectedSlot + " Found!\nTOP: " + String.format("%.3f", topPct) + "f\nBOTTOM: " + String.format("%.3f", bottomPct) + "f";
+            } else {
+                // Let's print out what H actually is so we can double check the device height mapping
+                message = "Scanning tray...\nNo block detected between Y 1600-2400 (H=" + H + ")";
+            }
 
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 @Override
@@ -89,6 +89,7 @@ public class BoardDetector {
     }
 
     private boolean hasTextureContrast(Bitmap bmp, int centerX, int centerY) {
+        if (centerX < 0 || centerX >= bmp.getWidth() || centerY < 0 || centerY >= bmp.getHeight()) return false;
         int minLuma = 255; int maxLuma = 0;
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -102,6 +103,6 @@ public class BoardDetector {
                 }
             }
         }
-        return (maxLuma - minLuma) > 18;
+        return (maxLuma - minLuma) > 15; // Slightly lowered contrast threshold to catch smoother shapes
     }
 }
