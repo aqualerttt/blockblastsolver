@@ -81,35 +81,35 @@ public class OverlayView extends View {
 
             for (int p = 0; p < 3; p++) {
                 float cx = pieceCenterPct[p] * screenW;
+                float currentCellSize = debugCellSize;
+                float currentRadius = greenBoxRadius;
 
-                // ADJUSTED: Match the detector shifts to lower grids 1 and 3
-                float slotCy = cy;
-                if (p == 0 || p == 2) {
-                    slotCy = cy + (debugCellSize * 0.30f);
+                // OVERRIDE FOR THE 3RD PIECE: Force visual synchronization to raw pixels
+                if (p == 2) {
+                    cx = 857f;
+                    cy = 1818f;
+                    currentCellSize = 53f;
+                    currentRadius = 53f * 1.5f; // Box wraps tightly around the 3x3 footprint
                 }
 
                 // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
                 debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - greenBoxRadius, slotCy - greenBoxRadius, 
-                                cx + greenBoxRadius, slotCy + greenBoxRadius, debugPaint);
+                canvas.drawRect(cx - currentRadius, cy - currentRadius, 
+                                cx + currentRadius, cy + currentRadius, debugPaint);
 
                 // 2. Draw individual small red verification dots at the 25 matrix scan points
                 debugPaint.setColor(Color.RED);
                 debugPaint.setStyle(Paint.Style.FILL);
                 for (int dr = -2; dr <= 2; dr++) {
                     for (int dc = -2; dc <= 2; dc++) {
-                        float rowOffset = dr;
-                        float colOffset = dc;
-
-                        float px = cx + colOffset * debugCellSize;
-                        float py = slotCy + rowOffset * debugCellSize;
+                        float px = cx + dc * currentCellSize;
+                        float py = cy + dr * currentCellSize;
                         canvas.drawCircle(px, py, 6f, debugPaint);
                     }
                 }
             }
         }
-
         if (placements == null) return;
 
         float cellW = (boardRight - boardLeft) / BoardDetector.GRID;
