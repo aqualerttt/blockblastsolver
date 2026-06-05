@@ -13,16 +13,14 @@ public class BoardDetector {
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
-    // Changing these to non-final so we can adjust them or view them dynamically
-    public static float TRAY_TOP_PCT     = 0.735f; 
-    public static float TRAY_BOTTOM_PCT  = 0.815f; 
+    public static final float TRAY_TOP_PCT     = 0.735f; 
+    public static final float TRAY_BOTTOM_PCT  = 0.815f; 
 
     public static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
 
-    // Expose the actual pixel bounds so the UI Overlay can draw them
     public int debugTrayTop = 0;
     public int debugTrayBottom = 0;
     public int[] debugPieceX = new int[PIECES];
@@ -39,16 +37,18 @@ public class BoardDetector {
         int cellW = (right - left) / GRID;
         int cellH = (bottom - top) / GRID;
 
-        // Save layout dimensions for the UI to read
         this.debugTrayTop = (int)(TRAY_TOP_PCT * H);
         this.debugTrayBottom = (int)(TRAY_BOTTOM_PCT * H);
-        this.debugCellSize = (int)(cellW * 0.60f); // Size of individual piece cells
+        
+        // ADJUSTED: Squeezed the spacing multiplier down from 0.60f to 0.42f
+        // This will pull the red sampling matrix tightly inward to match the tiny blocks.
+        this.debugCellSize = (int)(cellW * 0.42f); 
 
         for (int p = 0; p < PIECES; p++) {
             this.debugPieceX[p] = (int)(PIECE_CENTER_X[p] * W);
         }
 
-        // 1. Scan Board
+        // 1. Scan Main Board
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
@@ -61,7 +61,7 @@ public class BoardDetector {
             }
         }
 
-        // 2. Scan Pieces using the aggressive brightness check
+        // 2. Scan Pieces via Matrix Points
         int trayH = debugTrayBottom - debugTrayTop;
         int cy = debugTrayTop + trayH / 2;
 
