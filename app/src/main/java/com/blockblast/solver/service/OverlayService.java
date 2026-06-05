@@ -35,7 +35,7 @@ public class OverlayService extends Service {
 
     private static final String CHANNEL_ID   = "blockblast_solver";
     private static final int    NOTIF_ID     = 42;
-    private static final long   INTERVAL_MS  = 500; // analyse every 500ms
+    private static final long   INTERVAL_MS  = 500; 
 
     private MediaProjection  projection;
     private VirtualDisplay   virtualDisplay;
@@ -58,12 +58,10 @@ public class OverlayService extends Service {
         screenH   = dm.heightPixels;
         screenDpi = dm.densityDpi;
 
-        // Set up MediaProjection using your variable names
         MediaProjectionManager mpm =
                 (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         projection = mpm.getMediaProjection(resultCode, resultData);
 
-        // Android 14+ Security Callback Registration
         if (android.os.Build.VERSION.SDK_INT >= 34 && projection != null) {
             projection.registerCallback(new MediaProjection.Callback() {
                 @Override
@@ -73,11 +71,9 @@ public class OverlayService extends Service {
             }, new Handler(Looper.getMainLooper()));
         }
 
-        // ImageReader captures screen frames
         imageReader = ImageReader.newInstance(screenW, screenH,
                 PixelFormat.RGBA_8888, 2);
 
-        // Create the actual virtual display underneath the callback
         if (projection != null) {
             virtualDisplay = projection.createVirtualDisplay(
                     "BlockBlastCapture",
@@ -86,17 +82,13 @@ public class OverlayService extends Service {
                     imageReader.getSurface(), null, null);
         }
 
-        // Add overlay
         addOverlay();
 
-        // Start periodic analysis
         handler = new Handler(Looper.getMainLooper());
         handler.postDelayed(analyseLoop, INTERVAL_MS);
 
         return START_NOT_STICKY;
     }
-
-    // ── Overlay ────────────────────────────────────────────────────────────
 
     private void addOverlay() {
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -111,11 +103,16 @@ public class OverlayService extends Service {
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
         );
+        
+        // Bypasses display cutout/notch bounds and status padding shifts completely
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
+        params.flags |= WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+        
         params.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(overlayView, params);
     }
-
-    // ── Analysis loop ──────────────────────────────────────────────────────
 
     private final Runnable analyseLoop = new Runnable() {
         @Override public void run() {
@@ -139,7 +136,7 @@ public class OverlayService extends Service {
             BlockSolver.Placement[] placements =
                     BlockSolver.solve(detector.board, detector.pieces);
 
-            overlayView.update(detector.board, placements, screenW, screenH);
+            overlayView.update(detector, placements, screenW, screenH);
             bmp.recycle();
         } finally {
             img.close();
@@ -155,13 +152,11 @@ public class OverlayService extends Service {
             int W = image.getWidth();
             int H = image.getHeight();
 
-            // Handle row stride padding
             int rowPadding = rowStride - pixelStride * W;
             Bitmap bmp = Bitmap.createBitmap(
                     W + rowPadding / pixelStride, H, Bitmap.Config.ARGB_8888);
             bmp.copyPixelsFromBuffer(buf);
 
-            // Crop to exact screen size if padded
             if (rowPadding != 0) {
                 Bitmap cropped = Bitmap.createBitmap(bmp, 0, 0, W, H);
                 bmp.recycle();
@@ -172,8 +167,6 @@ public class OverlayService extends Service {
             return null;
         }
     }
-
-    // ── Lifecycle ──────────────────────────────────────────────────────────
 
     @Override
     public void onDestroy() {
@@ -186,8 +179,6 @@ public class OverlayService extends Service {
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }
-
-    // ── Notification ───────────────────────────────────────────────────────
 
     private Notification buildNotification() {
         NotificationManager nm =
