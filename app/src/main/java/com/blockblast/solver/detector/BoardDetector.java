@@ -8,18 +8,18 @@ public class BoardDetector {
     public static final int GRID = 8;
     public static final int PIECES = 3;
 
-    // Standard stabilized main board layout constraints
+    // Stable main board percentage metrics
     public static final float BOARD_TOP_PCT    = 0.225f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
-    // Controlled tray baseline container limits
+    // Hard baseline definition for the item tray zone
     public static final float TRAY_TOP_PCT     = 0.745f; 
     public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
-    // Horizontal centers derived from pixel tracking
-    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.805f };
+    // Isolated horizontal screen placement weights for Slots 1, 2, and 3
+    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.81f };
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
@@ -42,13 +42,15 @@ public class BoardDetector {
 
         this.debugTrayTop = (int)(TRAY_TOP_PCT * H);
         this.debugTrayBottom = (int)(TRAY_BOTTOM_PCT * H);
+        
+        // Re-stabilize cell scale factors cleanly based on screen scaling
         this.debugCellSize = (int)(cellW * 0.38f); 
 
         for (int p = 0; p < PIECES; p++) {
             this.debugPieceX[p] = (int)(PIECE_CENTER_X[p] * W);
         }
 
-        // 1. Scan Main Board Grid Matrix
+        // 1. Scan Main Board Matrix
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
@@ -61,18 +63,12 @@ public class BoardDetector {
             }
         }
 
-        // 2. Scan Pieces via Locked Grid Coordinate Alignment
+        // 2. Scan Pieces via Standard Baseline Matrix Loops
         int trayH = debugTrayBottom - debugTrayTop;
-        int defaultCy = debugTrayTop + trayH / 2;
+        int cy = debugTrayTop + trayH / 2;
 
         for (int p = 0; p < PIECES; p++) {
             int cx = debugPieceX[p];
-            int cy = defaultCy;
-
-            // Stabilize the vertical alignment line for outer tray slots
-            if (p == 0 || p == 2) {
-                cy = (int)(bottom + (cellW * 1.05f));
-            }
 
             for (int dr = -2; dr <= 2; dr++) {
                 for (int dc = -2; dc <= 2; dc++) {
