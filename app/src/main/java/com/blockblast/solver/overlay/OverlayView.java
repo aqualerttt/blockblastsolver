@@ -31,11 +31,6 @@ public class OverlayView extends View {
     private BlockSolver.Placement[] placements;
     private boolean[][] board;
 
-    // Populated from detector so debug dots reflect actual scan centres
-    private int[]  debugPieceX  = new int[3];
-    private int    debugCellSize = 0;
-    private int    debugPieceCY  = 0;
-
     public OverlayView(Context context) {
         super(context);
         setLayerType(LAYER_TYPE_SOFTWARE, null);
@@ -50,20 +45,15 @@ public class OverlayView extends View {
     }
 
     public void update(boolean[][] board, BlockSolver.Placement[] placements,
-                       int screenW, int screenH,
-                       int[] detectorPieceX, int detectorCellSize, int detectorPieceCY) {
-        this.board        = board;
-        this.placements   = placements;
-        this.debugCellSize = detectorCellSize;
-        this.debugPieceCY  = detectorPieceCY;
-        if (detectorPieceX != null)
-            System.arraycopy(detectorPieceX, 0, this.debugPieceX, 0, 3);
+                       int screenW, int screenH) {
+        this.board      = board;
+        this.placements = placements;
 
         boardLeft   = BoardDetector.BOARD_LEFT_PCT   * screenW;
         boardTop    = BoardDetector.BOARD_TOP_PCT    * screenH;
         boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
         boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
-
+        
         trayTop     = BoardDetector.TRAY_TOP_PCT     * screenH;
         trayBottom  = BoardDetector.TRAY_BOTTOM_PCT  * screenH;
 
@@ -72,38 +62,39 @@ public class OverlayView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        float screenW = canvas.getWidth();
+        float screenH = canvas.getHeight();
+        
+        float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
-        float cellSize      = debugCellSize > 0 ? debugCellSize : currentCellW * 0.55f;
-        float greenBoxRadius = cellSize * 2.6f;
+        
+        float debugCellSize = currentCellW * 0.38f; 
+        float greenBoxRadius = currentCellW * 1.2f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
         if (boardLeft > 0 && trayTop > 0) {
             Paint debugPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
             debugPaint.setStyle(Paint.Style.STROKE);
             debugPaint.setStrokeWidth(4f);
-
-            float cy = debugPieceCY > 0
-                    ? debugPieceCY
-                    : trayTop + (trayBottom - trayTop) / 2f;
+            
+            float cy = trayTop + (trayBottom - trayTop) / 2;
 
             for (int p = 0; p < 3; p++) {
-                float cx = debugPieceX[p] > 0
-                        ? debugPieceX[p]
-                        : BoardDetector.PIECE_CENTER_X[p] * canvas.getWidth();
+                float cx = pieceCenterPct[p] * screenW;
 
-                // 1. Green bounding box
+                // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
                 debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius,
+                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius, 
                                 cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
 
-                // 2. Red dots at the 25 actual scan points
+                // 2. Draw individual small red verification dots at the 25 matrix scan points
                 debugPaint.setColor(Color.RED);
                 debugPaint.setStyle(Paint.Style.FILL);
                 for (int dr = -2; dr <= 2; dr++) {
                     for (int dc = -2; dc <= 2; dc++) {
-                        float px = cx + dc * cellSize;
-                        float py = cy + dr * cellSize;
+                        float px = cx + dc * debugCellSize;
+                        float py = cy + dr * debugCellSize;
                         canvas.drawCircle(px, py, 6f, debugPaint);
                     }
                 }
