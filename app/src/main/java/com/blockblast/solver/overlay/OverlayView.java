@@ -1,11 +1,11 @@
 package com.blockblast.solver.overlay;
 
-import android.view.View;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.view.View;
 
 import com.blockblast.solver.detector.BoardDetector;
 import com.blockblast.solver.solver.BlockSolver;
@@ -65,11 +65,11 @@ public class OverlayView extends View {
         float screenW = canvas.getWidth();
         float screenH = canvas.getHeight();
         
-        float[] pieceCenterPct = { 0.19f, 0.50f, 0.805f };
+        float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
         
         float debugCellSize = currentCellW * 0.38f; 
-        float greenBoxRadius = currentCellW * 1.1f; 
+        float greenBoxRadius = currentCellW * 1.2f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
         if (boardLeft > 0 && trayTop > 0) {
@@ -77,16 +77,10 @@ public class OverlayView extends View {
             debugPaint.setStyle(Paint.Style.STROKE);
             debugPaint.setStrokeWidth(4f);
             
-            float defaultCy = trayTop + (trayBottom - trayTop) / 2;
+            float cy = trayTop + (trayBottom - trayTop) / 2;
 
             for (int p = 0; p < 3; p++) {
                 float cx = pieceCenterPct[p] * screenW;
-                float cy = defaultCy;
-
-                // Sync the vertical tracking calculation layout positions
-                if (p == 0 || p == 2) {
-                    cy = boardBottom + (currentCellW * 1.05f);
-                }
 
                 // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
