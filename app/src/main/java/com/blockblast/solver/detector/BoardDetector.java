@@ -19,12 +19,12 @@ public class BoardDetector {
     // These approximate Block Blast's layout on a typical 9:19.5 phone.
     // Users can tweak BOARD_TOP / BOARD_LEFT etc. via a calibration screen later.
 
-public static final float BOARD_TOP_PCT    = 0.235f;
-public static final float BOARD_LEFT_PCT   = 0.045f;
-public static final float BOARD_RIGHT_PCT  = 0.955f;
-public static final float BOARD_BOTTOM_PCT = 0.720f;
-public static final float TRAY_TOP_PCT     = 0.760f;
-public static final float TRAY_BOTTOM_PCT  = 0.900f;
+public static final float BOARD_TOP_PCT    = 0.242f; // Shifted down from 0.235
+public static final float BOARD_LEFT_PCT   = 0.042f; // Snugged slightly left
+public static final float BOARD_RIGHT_PCT  = 0.958f; // Widened slightly right
+public static final float BOARD_BOTTOM_PCT = 0.640f; // Adjusted for your grid bottom
+public static final float TRAY_TOP_PCT     = 0.720f; // Adjusted to capture the piece tray
+public static final float TRAY_BOTTOM_PCT  = 0.820f; // Adjusted for piece tray bottom
 
     // Piece tray columns (left-centre of each of the 3 slots)
     private static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
