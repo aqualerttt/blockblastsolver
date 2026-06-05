@@ -6,7 +6,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.View;
-import android.media.projection.MediaProjection;
 
 import com.blockblast.solver.detector.BoardDetector;
 import com.blockblast.solver.solver.BlockSolver;
@@ -63,22 +62,24 @@ public class OverlayView extends View {
         boardTop    = BoardDetector.BOARD_TOP_PCT    * screenH;
         boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
         boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
-        trayTop     = BoardDetector.TRAY_TOP_PCT     * screenH;
-        trayBottom  = BoardDetector.TRAY_BOTTOM_PCT  * screenH;
+        
+        // Corrected local variables to pull the overlay rectangles down
+        trayTop     = 0.745f * screenH;
+        trayBottom  = 0.835f * screenH;
 
         postInvalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        // Draw the diagnostic tray frames even if placements solver logic hasn't completed yet
         float screenW = canvas.getWidth();
         float screenH = canvas.getHeight();
         
-        // Dynamic horizontal layout markers matching BoardDetector centers (15%, 50%, 83%)
         float[] pieceCenterPct = { 0.15f, 0.50f, 0.83f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
-        float debugCellSize = currentCellW * 0.60f; // matches shrunken piece grid size
+        
+        // Fixed hardcoded mismatch: Changed 0.60f to exactly 0.38f
+        float debugCellSize = currentCellW * 0.38f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
         if (boardLeft > 0 && trayTop > 0) {
