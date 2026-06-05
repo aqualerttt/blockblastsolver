@@ -28,6 +28,7 @@ public class BoardDetector {
         int W = bmp.getWidth();
         int H = bmp.getHeight();
 
+        // Standard board check remains active
         int left = (int)(BOARD_LEFT_PCT * W);
         int right = (int)(BOARD_RIGHT_PCT * W);
         int top = (int)(BOARD_TOP_PCT * H);
@@ -39,11 +40,16 @@ public class BoardDetector {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
                 int py = top + row * cellH + cellH / 2;
-                if (px < W && py < H) board[row][col] = hasTextureContrast(bmp, px, py);
+                if (px < W && py < H) {
+                    // Quick fallback calculation for board grid
+                    int color = bmp.getPixel(px, py);
+                    int r = (color >> 16) & 0xFF; int g = (color >> 8) & 0xFF; int b = color & 0xFF;
+                    board[row][col] = (0.299 * r + 0.587 * g + 0.114 * b) > 65;
+                }
             }
         }
 
-        // --- CALIBRATION RULER (Y 1600 - 2050) ---
+        // --- NEW SIMPLIFIED BRIGHTNESS LASER RULER ---
         int firstActiveY = -1;
         int lastActiveY = -1;
         int detectedSlot = -1;
@@ -51,15 +57,24 @@ public class BoardDetector {
         for (int p = 0; p < PIECES; p++) {
             int targetX = (int)(PIECE_CENTER_X[p] * W);
             
-            // ADJUSTED: Tightened vertical search window down to 2050 max
             for (int y = 1600; y < 2050; y++) {
-                if (hasTextureContrast(bmp, targetX, y)) {
-                    if (firstActiveY == -1) firstActiveY = y;
-                    lastActiveY = y;
+                if (targetX >= 0 && targetX < W && y >= 0 && y < H) {
+                    int color = bmp.getPixel(targetX, y);
+                    int r = (color >> 16) & 0xFF;
+                    int g = (color >> 8) & 0xFF;
+                    int b = color & 0xFF;
+                    int luma = (int)(0.299 * r + 0.587 * g + 0.114 * b);
+
+                    // Smooth yellow or bright red blocks easily register luma values > 80.
+                    // The dark background stays way below 50.
+                    if (luma > 75) {
+                        if (firstActiveY == -1) firstActiveY = y;
+                        lastActiveY = y;
+                    }
                 }
             }
             
-            if (firstActiveY != -1 && (lastActiveY - firstActiveY) > 50) {
+            if (firstActiveY != -1 && (lastActiveY - firstActiveY) > 40) {
                 detectedSlot = p + 1;
                 break;
             } else {
@@ -75,7 +90,7 @@ public class BoardDetector {
                 float bottomPct = (float) lastActiveY / H;
                 message = "Slot " + detectedSlot + " Found!\nTOP: " + String.format("%.3f", topPct) + "f\nBOTTOM: " + String.format("%.3f", bottomPct) + "f";
             } else {
-                message = "Scanning tray...\nNo block detected between Y 1600-2050 (H=" + H + ")";
+                message = "Ruler Active!\nNo bright blocks found in Y 1600-2050.";
             }
 
             new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -85,23 +100,5 @@ public class BoardDetector {
                 }
             });
         }
-    }
-
-    private boolean hasTextureContrast(Bitmap bmp, int centerX, int centerY) {
-        if (centerX < 0 || centerX >= bmp.getWidth() || centerY < 0 || centerY >= bmp.getHeight()) return false;
-        int minLuma = 255; int maxLuma = 0;
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                int x = centerX + dx; int y = centerY + dy;
-                if (x >= 0 && x < bmp.getWidth() && y >= 0 && y < bmp.getHeight()) {
-                    int color = bmp.getPixel(x, y);
-                    int r = (color >> 16) & 0xFF; int g = (color >> 8) & 0xFF; int b = color & 0xFF;
-                    int luma = (int)(0.299 * r + 0.587 * g + 0.114 * b);
-                    if (luma < minLuma) minLuma = luma;
-                    if (luma > maxLuma) maxLuma = luma;
-                }
-            }
-        }
-        return (maxLuma - minLuma) > 15;
     }
 }
