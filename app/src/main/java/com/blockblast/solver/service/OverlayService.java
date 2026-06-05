@@ -134,7 +134,7 @@ public class OverlayService extends Service {
             if (bmp == null) return;
 
             BoardDetector detector = new BoardDetector();
-            detector.detect(bmp);
+            detector.detect(bmp, this);
 
             BlockSolver.Placement[] placements =
                     BlockSolver.solve(detector.board, detector.pieces);
