@@ -8,15 +8,18 @@ public class BoardDetector {
     public static final int GRID = 8;
     public static final int PIECES = 3;
 
+    // Standard stabilized main board layout constraints
     public static final float BOARD_TOP_PCT    = 0.225f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
+    // Controlled tray baseline container limits
     public static final float TRAY_TOP_PCT     = 0.745f; 
     public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
-    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.81f };
+    // Horizontal centers derived from pixel tracking
+    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.805f };
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
@@ -45,7 +48,7 @@ public class BoardDetector {
             this.debugPieceX[p] = (int)(PIECE_CENTER_X[p] * W);
         }
 
-        // 1. Scan Main Board
+        // 1. Scan Main Board Grid Matrix
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
@@ -58,25 +61,23 @@ public class BoardDetector {
             }
         }
 
-       // 2. Scan Pieces
+        // 2. Scan Pieces via Locked Grid Coordinate Alignment
         int trayH = debugTrayBottom - debugTrayTop;
-        int cy = debugTrayTop + trayH / 2;
+        int defaultCy = debugTrayTop + trayH / 2;
 
         for (int p = 0; p < PIECES; p++) {
             int cx = debugPieceX[p];
-            int currentCellSize = debugCellSize;
+            int cy = defaultCy;
 
-            // OVERRIDE FOR THE 3RD PIECE: Use exact hardcoded pixel coordinates
-            if (p == 2) {
-                cx = 857;          // Absolute pixel center X
-                cy = 1818;         // Absolute pixel center Y
-                currentCellSize = 53; // Absolute block cell size in pixels
+            // Stabilize the vertical alignment line for outer tray slots
+            if (p == 0 || p == 2) {
+                cy = (int)(bottom + (cellW * 1.05f));
             }
 
             for (int dr = -2; dr <= 2; dr++) {
                 for (int dc = -2; dc <= 2; dc++) {
-                    int px = cx + dc * currentCellSize;
-                    int py = cy + dr * currentCellSize;
+                    int px = cx + dc * debugCellSize;
+                    int py = cy + dr * debugCellSize;
                     int r  = dr + 2;
                     int c  = dc + 2;
 
