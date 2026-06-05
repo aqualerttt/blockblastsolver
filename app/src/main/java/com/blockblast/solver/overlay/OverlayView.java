@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.View;
+import android.media.projection.MediaProjection;
 
 import com.blockblast.solver.detector.BoardDetector;
 import com.blockblast.solver.solver.BlockSolver;
