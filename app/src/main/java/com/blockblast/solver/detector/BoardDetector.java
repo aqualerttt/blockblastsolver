@@ -1,92 +1,63 @@
 package com.blockblast.solver.detector;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 
-/**
- * Detects the 8×8 Block Blast board and the 3 piece slots from a screen bitmap.
- *
- * Strategy: luminance threshold.
- *   - Filled cell  → bright, raised tile  → high luminance
- *   - Empty cell   → dark background      → low luminance
- * This is completely colour-agnostic, so skin/theme changes don't break detection.
- */
 public class BoardDetector {
 
-    public static final int GRID = 8;   // 8×8 board
-    public static final int PIECES = 3; // 3 piece slots
+    public static final int GRID = 8;
+    public static final int PIECES = 3;
 
-    // ── Tuneable constants (percentages of screen dimensions) ──────────────
-    // These approximate Block Blast's layout on a typical 9:19.5 phone.
-    // Users can tweak BOARD_TOP / BOARD_LEFT etc. via a calibration screen later.
+    // Your perfect Redmi Note 12 dimensions
+    public static final float BOARD_TOP_PCT    = 0.227f;
+    public static final float BOARD_LEFT_PCT   = 0.055f;
+    public static final float BOARD_RIGHT_PCT  = 0.944f;
+    public static final float BOARD_BOTTOM_PCT = 0.665f;
+    public static final float TRAY_TOP_PCT     = 0.735f; 
+    public static final float TRAY_BOTTOM_PCT  = 0.815f; 
 
-public static final float BOARD_TOP_PCT    = 0.228f; // Decreased from 0.232 to pull the top line FURTHER UP
-public static final float BOARD_LEFT_PCT   = 0.055f; // KEPT (Perfect!)
-public static final float BOARD_RIGHT_PCT  = 0.944f; // KEPT (Perfect!)
-public static final float BOARD_BOTTOM_PCT = 0.665f; // Increased from 0.654 to push the bottom line FURTHER DOWN
-public static final float TRAY_TOP_PCT     = 0.735f;
-public static final float TRAY_BOTTOM_PCT  = 0.815f;
-
-    // Piece tray columns (left-centre of each of the 3 slots)
     private static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
-    // Max piece size we check (5×5 bounding box around centre)
-    private static final int PIECE_SCAN_HALF    = 2; // ±2 cells
+    private static final int PIECE_SCAN_HALF    = 2;
 
-    /** Luminance cutoff: 0-255. Pixels above this = filled. */
-    private static final float LUMA_THRESHOLD = 80f;
-
-    // ── Outputs ────────────────────────────────────────────────────────────
-
-    /** board[row][col] = true if that cell is filled */
     public boolean[][] board = new boolean[GRID][GRID];
-
-    /**
-     * pieces[p][r][c] = true for piece p at relative row r, col c.
-     * Each piece fits in a 5×5 bounding box.
-     */
     public boolean[][][] pieces = new boolean[PIECES][5][5];
-
-    // ── Public API ─────────────────────────────────────────────────────────
 
     public void detect(Bitmap bmp) {
         int W = bmp.getWidth();
         int H = bmp.getHeight();
 
-        detectBoard(bmp, W, H);
-        detectPieces(bmp, W, H);
-    }
-
-    // ── Board detection ────────────────────────────────────────────────────
-
-    private void detectBoard(Bitmap bmp, int W, int H) {
+        // 1. Sample a known EMPTY space on the board to lock in the background color
+        // Row 0, Col 7 (top right) is almost always empty at the start of a turn
         int left   = (int)(BOARD_LEFT_PCT   * W);
         int right  = (int)(BOARD_RIGHT_PCT  * W);
         int top    = (int)(BOARD_TOP_PCT    * H);
         int bottom = (int)(BOARD_BOTTOM_PCT * H);
+        int cellW  = (right  - left) / GRID;
+        int cellH  = (bottom - top ) / GRID;
+        
+        int bgX = left + 7 * cellW + cellW / 2;
+        int bgY = top + 0 * cellH + cellH / 2;
+        int bgColor = bmp.getPixel(bgX, bgY);
 
-        int cellW = (right  - left) / GRID;
-        int cellH = (bottom - top ) / GRID;
-
+        // 2. Detect Board using color difference
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
-                // Sample centre of each cell
                 int px = left + col * cellW + cellW / 2;
                 int py = top  + row * cellH + cellH / 2;
-                board[row][col] = (px < W && py < H) && luma(bmp.getPixel(px, py)) > LUMA_THRESHOLD;
+                if (px < W && py < H) {
+                    board[row][col] = isDifferentColor(bmp.getPixel(px, py), bgColor);
+                }
             }
         }
-    }
 
-    // ── Piece detection ────────────────────────────────────────────────────
-
-    private void detectPieces(Bitmap bmp, int W, int H) {
+        // 3. Detect Pieces using the tray background color
         int trayTop    = (int)(TRAY_TOP_PCT    * H);
         int trayBottom = (int)(TRAY_BOTTOM_PCT * H);
         int trayH      = trayBottom - trayTop;
+        int cellPx     = (int)((cellW) * 0.60f);
 
-        // Approximate cell size within tray (same as board cell width)
-        int boardLeft  = (int)(BOARD_LEFT_PCT  * W);
-        int boardRight = (int)(BOARD_RIGHT_PCT * W);
-        int cellPx = (int)(((boardRight - boardLeft) / GRID) * 0.60f);
+        // Sample background of the tray (far left edge where no piece sits)
+        int trayBgColor = bmp.getPixel((int)(0.02f * W), trayTop + trayH / 2);
 
         for (int p = 0; p < PIECES; p++) {
             int cx = (int)(PIECE_CENTER_X[p] * W);
@@ -98,20 +69,29 @@ public static final float TRAY_BOTTOM_PCT  = 0.815f;
                     int py = cy + dr * cellPx;
                     int r  = dr + PIECE_SCAN_HALF;
                     int c  = dc + PIECE_SCAN_HALF;
-                    pieces[p][r][c] = (px >= 0 && px < W && py >= 0 && py < H)
-                            && luma(bmp.getPixel(px, py)) > LUMA_THRESHOLD;
+
+                    if (px >= 0 && px < W && py >= 0 && py < H) {
+                        pieces[p][r][c] = isDifferentColor(bmp.getPixel(px, py), trayBgColor);
+                    }
                 }
             }
         }
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
+    /** Compares two colors. Returns true if they are distinct (meaning it's a block). */
+    private boolean isDifferentColor(int colorA, int colorB) {
+        int rA = Color.red(colorA);
+        int gA = Color.green(colorA);
+        int bA = Color.blue(colorA);
 
-    /** Standard luminance from ARGB pixel (0-255). */
-    private static float luma(int argb) {
-        int r = (argb >> 16) & 0xFF;
-        int g = (argb >>  8) & 0xFF;
-        int b =  argb        & 0xFF;
-        return 0.299f * r + 0.587f * g + 0.114f * b;
+        int rB = Color.red(colorB);
+        int gB = Color.green(colorB);
+        int bB = Color.blue(colorB);
+
+        // Euclidean distance formula for RGB color space
+        double distance = Math.sqrt(Math.pow(rA - rB, 2) + Math.pow(gA - gB, 2) + Math.pow(bA - bB, 2));
+        
+        // If color distance is greater than 35, it's definitely a tile, not background
+        return distance > 35.0;
     }
 }
