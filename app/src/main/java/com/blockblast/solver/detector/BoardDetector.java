@@ -15,8 +15,8 @@ public class BoardDetector {
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
     // Hard baseline definition for the item tray zone
-    public static final float TRAY_TOP_PCT     = 0.745f; 
-    public static final float TRAY_BOTTOM_PCT  = 0.835f; 
+    public static final float TRAY_TOP_PCT     = 0.730f; 
+    public static final float TRAY_BOTTOM_PCT  = 0.890f; 
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
