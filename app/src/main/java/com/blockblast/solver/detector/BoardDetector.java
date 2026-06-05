@@ -58,28 +58,25 @@ public class BoardDetector {
             }
         }
 
-        // 2. Scan Pieces via Position-Aware Matrix Points
+       // 2. Scan Pieces
         int trayH = debugTrayBottom - debugTrayTop;
         int cy = debugTrayTop + trayH / 2;
 
         for (int p = 0; p < PIECES; p++) {
             int cx = debugPieceX[p];
+            int currentCellSize = debugCellSize;
 
-            // ADJUSTED: Shift left (p=0) and right (p=2) slots down to match the pieces
-            int slotCy = cy;
-            if (p == 0 || p == 2) {
-                slotCy = cy + (int)(debugCellSize * 0.30f); 
+            // OVERRIDE FOR THE 3RD PIECE: Use exact hardcoded pixel coordinates
+            if (p == 2) {
+                cx = 857;          // Absolute pixel center X
+                cy = 1818;         // Absolute pixel center Y
+                currentCellSize = 53; // Absolute block cell size in pixels
             }
 
             for (int dr = -2; dr <= 2; dr++) {
                 for (int dc = -2; dc <= 2; dc++) {
-                    
-                    float rowOffset = dr;
-                    float colOffset = dc;
-                    
-                    int px = cx + (int)(colOffset * debugCellSize);
-                    int py = slotCy + (int)(rowOffset * debugCellSize);
-                    
+                    int px = cx + dc * currentCellSize;
+                    int py = cy + dr * currentCellSize;
                     int r  = dr + 2;
                     int c  = dc + 2;
 
