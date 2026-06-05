@@ -1,15 +1,14 @@
 package com.blockblast.solver.detector;
 
 import android.graphics.Bitmap;
-import android.graphics.Color;
 
 public class BoardDetector {
 
     public static final int GRID = 8;
     public static final int PIECES = 3;
 
-    // Your perfect Redmi Note 12 dimensions
-    public static final float BOARD_TOP_PCT    = 0.227f;
+    // Your verified Redmi Note 12 layout percentages
+    public static final float BOARD_TOP_PCT    = 0.225f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
@@ -26,38 +25,29 @@ public class BoardDetector {
         int W = bmp.getWidth();
         int H = bmp.getHeight();
 
-        // 1. Sample a known EMPTY space on the board to lock in the background color
-        // Row 0, Col 7 (top right) is almost always empty at the start of a turn
         int left   = (int)(BOARD_LEFT_PCT   * W);
         int right  = (int)(BOARD_RIGHT_PCT  * W);
         int top    = (int)(BOARD_TOP_PCT    * H);
         int bottom = (int)(BOARD_BOTTOM_PCT * H);
         int cellW  = (right  - left) / GRID;
         int cellH  = (bottom - top ) / GRID;
-        
-        int bgX = left + 7 * cellW + cellW / 2;
-        int bgY = top + 0 * cellH + cellH / 2;
-        int bgColor = bmp.getPixel(bgX, bgY);
 
-        // 2. Detect Board using color difference
+        // 1. Scan Main Board using texture contrast variance
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
                 int py = top  + row * cellH + cellH / 2;
                 if (px < W && py < H) {
-                    board[row][col] = isDifferentColor(bmp.getPixel(px, py), bgColor);
+                    board[row][col] = hasTextureContrast(bmp, px, py);
                 }
             }
         }
 
-        // 3. Detect Pieces using the tray background color
+        // 2. Scan Piece Tray using tight shrunken steps
         int trayTop    = (int)(TRAY_TOP_PCT    * H);
         int trayBottom = (int)(TRAY_BOTTOM_PCT * H);
         int trayH      = trayBottom - trayTop;
-        int cellPx     = (int)((cellW) * 0.60f);
-
-        // Sample background of the tray (far left edge where no piece sits)
-        int trayBgColor = bmp.getPixel((int)(0.02f * W), trayTop + trayH / 2);
+        int cellPx     = (int)((cellW) * 0.60f); // Match the shrunken piece size
 
         for (int p = 0; p < PIECES; p++) {
             int cx = (int)(PIECE_CENTER_X[p] * W);
@@ -71,27 +61,44 @@ public class BoardDetector {
                     int c  = dc + PIECE_SCAN_HALF;
 
                     if (px >= 0 && px < W && py >= 0 && py < H) {
-                        pieces[p][r][c] = isDifferentColor(bmp.getPixel(px, py), trayBgColor);
+                        pieces[p][r][c] = hasTextureContrast(bmp, px, py);
                     }
                 }
             }
         }
     }
 
-    /** Compares two colors. Returns true if they are distinct (meaning it's a block). */
-    private boolean isDifferentColor(int colorA, int colorB) {
-        int rA = Color.red(colorA);
-        int gA = Color.green(colorA);
-        int bA = Color.blue(colorA);
+    /**
+     * Checks a 3x3 pixel neighborhood around a coordinate.
+     * If the brightness jumps around significantly, it's a textured block element.
+     */
+    private boolean hasTextureContrast(Bitmap bmp, int centerX, int centerY) {
+        int minLuma = 255;
+        int maxLuma = 0;
 
-        int rB = Color.red(colorB);
-        int gB = Color.green(colorB);
-        int bB = Color.blue(colorB);
+        // Sample a tiny 3x3 matrix around the target pixel center
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int x = centerX + dx;
+                int y = centerY + dy;
+                
+                if (x >= 0 && x < bmp.getWidth() && y >= 0 && y < bmp.getHeight()) {
+                    int color = bmp.getPixel(x, y);
+                    
+                    // Convert to standard grayscale luminance
+                    int r = (color >> 16) & 0xFF;
+                    int g = (color >> 8) & 0xFF;
+                    int b = color & 0xFF;
+                    int luma = (int)(0.299 * r + 0.587 * g + 0.114 * b);
 
-        // Euclidean distance formula for RGB color space
-        double distance = Math.sqrt(Math.pow(rA - rB, 2) + Math.pow(gA - gB, 2) + Math.pow(bA - bB, 2));
-        
-        // If color distance is greater than 35, it's definitely a tile, not background
-        return distance > 35.0;
+                    if (luma < minLuma) minLuma = luma;
+                    if (luma > maxLuma) maxLuma = luma;
+                }
+            }
+        }
+
+        // A high contrast delta means borders, bevels, or block shines are present
+        int delta = maxLuma - minLuma;
+        return delta > 18; 
     }
 }
