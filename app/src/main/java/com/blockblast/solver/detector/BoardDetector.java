@@ -21,10 +21,12 @@ public class BoardDetector {
     public static final float TRAY_TOP_PCT     = 0.735f; 
     public static final float TRAY_BOTTOM_PCT  = 0.815f; 
 
+    // The horizontal centers for Left, Middle, and Right slots
+    private static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
+
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
 
-    // Added context parameter here so we can show on-screen text
     public void detect(Bitmap bmp, final Context context) {
         int W = bmp.getWidth();
         int H = bmp.getHeight();
@@ -44,27 +46,39 @@ public class BoardDetector {
             }
         }
 
-        // --- ON-SCREEN CALIBRATION RULER ---
-        int middleX = W / 2;
+        // --- IMPROVED ON-SCREEN RULER (SCANS ALL 3 SLOTS) ---
         int firstActiveY = -1;
         int lastActiveY = -1;
 
-        // Scan down the center column to find the 5x5 piece
-        for (int y = 1600; y < 2100; y++) {
-            if (hasTextureContrast(bmp, middleX, y)) {
-                if (firstActiveY == -1) firstActiveY = y;
-                lastActiveY = y;
+        // Loop through all 3 slot X-coordinates
+        for (int p = 0; p < PIECES; p++) {
+            int targetX = (int)(PIECE_CENTER_X[p] * W);
+            
+            // Scan vertically through the tray zone for this slot
+            for (int y = 1600; y < 2100; y++) {
+                if (hasTextureContrast(bmp, targetX, y)) {
+                    if (firstActiveY == -1) firstActiveY = y;
+                    lastActiveY = y;
+                }
+            }
+            
+            // If we found a solid vertical stretch of pixels in this slot, stop looking!
+            if (firstActiveY != -1 && (lastActiveY - firstActiveY) > 100) {
+                break;
+            } else {
+                // Reset if it was just a tiny piece or random noise, try next slot
+                firstActiveY = -1;
+                lastActiveY = -1;
             }
         }
 
+        // If a significant piece block structure is found, show the bubble message
         if (firstActiveY != -1 && lastActiveY != -1 && context != null) {
             final float topPct = (float) firstActiveY / H;
             final float bottomPct = (float) lastActiveY / H;
             
-            // Format the exact text we need to copy-paste
             final String message = "TOP: " + String.format("%.3f", topPct) + "f\nBOTTOM: " + String.format("%.3f", bottomPct) + "f";
 
-            // Pop it up on your phone screen immediately
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 @Override
                 public void run() {
