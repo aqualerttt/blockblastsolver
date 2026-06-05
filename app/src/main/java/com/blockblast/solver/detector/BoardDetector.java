@@ -12,7 +12,7 @@ public class BoardDetector {
     public static final int PIECES = 3;
 
     // Your perfect main board parameters
-    public static final float BOARD_TOP_PCT    = 0.225f;
+    public static final float BOARD_TOP_PCT    = 0.228f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
