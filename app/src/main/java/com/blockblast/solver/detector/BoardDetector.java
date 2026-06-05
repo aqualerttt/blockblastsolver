@@ -18,37 +18,37 @@ public class BoardDetector {
     public static final float TRAY_TOP_PCT     = 0.745f; 
     public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
-    // Isolated horizontal screen placement weights for Slots 1, 2, and 3
-    public static final float[] PIECE_CENTER_X = { 0.19f, 0.50f, 0.81f };
-
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
 
-    public int debugTrayTop = 0;
-    public int debugTrayBottom = 0;
-    public int[] debugPieceX = new int[PIECES];
-    public int debugCellSize = 0;
+    // Shared runtime geometry passed dynamically to visual OverlayView
+    public int debugW = 0;
+    public int debugH = 0;
+    public int debugCellW = 0;
+    public int debugCellH = 0;
+    public int[] detectedMinX = new int[PIECES];
+    public int[] detectedMaxX = new int[PIECES];
+    public int[] detectedMinY = new int[PIECES];
+    public int[] detectedMaxY = new int[PIECES];
+    public boolean[] slotHasPiece = new boolean[PIECES];
 
     public void detect(Bitmap bmp, final Context context) {
         int W = bmp.getWidth();
         int H = bmp.getHeight();
+        
+        this.debugW = W;
+        this.debugH = H;
 
         int left = (int)(BOARD_LEFT_PCT * W);
         int right = (int)(BOARD_RIGHT_PCT * W);
         int top = (int)(BOARD_TOP_PCT * H);
         int bottom = (int)(BOARD_BOTTOM_PCT * H);
+        
         int cellW = (right - left) / GRID;
         int cellH = (bottom - top) / GRID;
-
-        this.debugTrayTop = (int)(TRAY_TOP_PCT * H);
-        this.debugTrayBottom = (int)(TRAY_BOTTOM_PCT * H);
         
-        // Re-stabilize cell scale factors cleanly based on screen scaling
-        this.debugCellSize = (int)(cellW * 0.38f); 
-
-        for (int p = 0; p < PIECES; p++) {
-            this.debugPieceX[p] = (int)(PIECE_CENTER_X[p] * W);
-        }
+        this.debugCellW = cellW;
+        this.debugCellH = cellH;
 
         // 1. Scan Main Board Matrix
         for (int row = 0; row < GRID; row++) {
@@ -57,34 +57,100 @@ public class BoardDetector {
                 int py = top + row * cellH + cellH / 2;
                 if (px < W && py < H) {
                     int color = bmp.getPixel(px, py);
-                    int r = (color >> 16) & 0xFF; int g = (color >> 8) & 0xFF; int b = color & 0xFF;
+                    int r = (color >> 16) & 0xFF; 
+                    int g = (color >> 8) & 0xFF; 
+                    int b = color & 0xFF;
+                    // Luma threshold to separate empty slots from background grid accents
                     board[row][col] = (0.299 * r + 0.587 * g + 0.114 * b) > 65;
                 }
             }
         }
 
-        // 2. Scan Pieces via Standard Baseline Matrix Loops
-        int trayH = debugTrayBottom - debugTrayTop;
-        int cy = debugTrayTop + trayH / 2;
+        // 2. Color-Agnostic Scan via Dynamic Bounding Box Localization
+        int tTop = (int)(TRAY_TOP_PCT * H);
+        int tBot = (int)(TRAY_BOTTOM_PCT * H);
+
+        // Define explicit searching windows for Slots 1, 2, and 3
+        float[][] slotBoundsX = {
+            {0.03f * W, 0.36f * W}, // Slot 1 search window bounds
+            {0.36f * W, 0.64f * W}, // Slot 2 search window bounds
+            {0.64f * W, 0.97f * W}  // Slot 3 search window bounds
+        };
+
+        // Reset pieces matrix maps clean
+        for (int p = 0; p < PIECES; p++) {
+            slotHasPiece[p] = false;
+            detectedMinX[p] = Integer.MAX_VALUE;
+            detectedMaxX[p] = Integer.MIN_VALUE;
+            detectedMinY[p] = Integer.MAX_VALUE;
+            detectedMaxY[p] = Integer.MIN_VALUE;
+            
+            for (int r = 0; r < 5; r++) {
+                for (int c = 0; c < 5; c++) {
+                    pieces[p][r][c] = false;
+                }
+            }
+        }
 
         for (int p = 0; p < PIECES; p++) {
-            int cx = debugPieceX[p];
+            int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
+            int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
 
-            for (int dr = -2; dr <= 2; dr++) {
-                for (int dc = -2; dc <= 2; dc++) {
-                    int px = cx + dc * debugCellSize;
-                    int py = cy + dr * debugCellSize;
-                    int r  = dr + 2;
-                    int c  = dc + 2;
+            // Step A: Find the shape bounding limits inside the tray window based on Luma contrast
+            for (int py = tTop; py < tBot; py += 4) { 
+                for (int px = (int)slotBoundsX[p][0]; px < (int)slotBoundsX[p][1]; px += 4) {
+                    if (px >= W || py >= H) continue;
+                    
+                    int color = bmp.getPixel(px, py);
+                    int r = (color >> 16) & 0xFF; 
+                    int g = (color >> 8) & 0xFF; 
+                    int b = color & 0xFF;
+                    int luma = (int)(0.299 * r + 0.587 * g + 0.114 * b);
 
-                    if (px >= 0 && px < W && py >= 0 && py < H) {
-                        int color = bmp.getPixel(px, py);
-                        int redVal = (color >> 16) & 0xFF; 
-                        int greenVal = (color >> 8) & 0xFF; 
-                        int blueVal = color & 0xFF;
-                        int luma = (int)(0.299 * redVal + 0.587 * greenVal + 0.114 * blueVal);
+                    // A Luma above 70 means a structural piece asset color (agnostic of hue variations)
+                    if (luma > 70) { 
+                        if (px < minX) minX = px; if (px > maxX) maxX = px;
+                        if (py < minY) minY = py; if (py > maxY) maxY = py;
+                    }
+                }
+            }
+
+            // Guard: If boundaries didn't adjust, tray slot is verified empty
+            if (maxX <= minX || maxY <= minY) {
+                continue;
+            }
+
+            // Save visual tracking boundaries for the debugging canvas to draw
+            this.detectedMinX[p] = minX;
+            this.detectedMaxX[p] = maxX;
+            this.detectedMinY[p] = minY;
+            this.detectedMaxY[p] = maxY;
+            this.slotHasPiece[p] = true;
+
+            int pieceW = maxX - minX;
+            int pieceH = maxY - minY;
+
+            // Step B: Infer array grid constraints by comparing actual bounding box to unit cells
+            int cols = Math.round((float) pieceW / cellW);
+            int rows = Math.round((float) pieceH / cellH);
+            cols = Math.max(1, Math.min(5, cols));
+            rows = Math.max(1, Math.min(5, rows));
+
+            // Step C: Sample from precise relative calculated center vectors inside the bounding box
+            for (int rIdx = 0; rIdx < rows; rIdx++) {
+                for (int cIdx = 0; cIdx < cols; cIdx++) {
+                    int sampleX = minX + (int) ((cIdx + 0.5f) * ((float) pieceW / cols));
+                    int sampleY = minY + (int) ((rIdx + 0.5f) * ((float) pieceH / rows));
+
+                    if (sampleX < W && sampleY < H) {
+                        int color = bmp.getPixel(sampleX, sampleY);
+                        int r = (color >> 16) & 0xFF; 
+                        int g = (color >> 8) & 0xFF; 
+                        int b = color & 0xFF;
+                        int luma = (int)(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        pieces[p][r][c] = (luma > 75);
+                        // Populate clean top-left oriented structures for the canonical solver matrix
+                        pieces[p][rIdx][cIdx] = (luma > 70);
                     }
                 }
             }
