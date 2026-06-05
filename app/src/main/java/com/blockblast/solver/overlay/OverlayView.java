@@ -91,15 +91,18 @@ public class OverlayView extends View {
                                 cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
 
                 // 2. Draw individual small red verification dots at the 25 matrix scan points
-                debugPaint.setColor(Color.RED);
-                debugPaint.setStyle(Paint.Style.FILL);
-                for (int dr = -2; dr <= 2; dr++) {
-                    for (int dc = -2; dc <= 2; dc++) {
-                        float px = cx + dc * debugCellSize;
-                        float py = cy + dr * debugCellSize;
-                        canvas.drawCircle(px, py, 6f, debugPaint);
-                    }
-                }
+debugPaint.setColor(Color.RED);
+debugPaint.setStyle(Paint.Style.FILL);
+for (int dr = -2; dr <= 2; dr++) {
+    for (int dc = -2; dc <= 2; dc++) {
+        float rowOffset = dr;
+        float colOffset = dc;
+
+        float px = cx + colOffset * debugCellSize;
+        float py = cy + rowOffset * debugCellSize;
+        canvas.drawCircle(px, py, 6f, debugPaint);
+    }
+}
             }
         }
 
