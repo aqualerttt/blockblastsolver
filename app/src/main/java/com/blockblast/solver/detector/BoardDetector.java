@@ -43,7 +43,7 @@ public class BoardDetector {
             }
         }
 
-        // --- EXPANDED VERTICAL SCAN RANGE ---
+        // --- CALIBRATION RULER (Y 1600 - 2050) ---
         int firstActiveY = -1;
         int lastActiveY = -1;
         int detectedSlot = -1;
@@ -51,8 +51,8 @@ public class BoardDetector {
         for (int p = 0; p < PIECES; p++) {
             int targetX = (int)(PIECE_CENTER_X[p] * W);
             
-            // Expanded search range from Y = 1600 all the way down to Y = 2400
-            for (int y = 1600; y < 2400; y++) {
+            // ADJUSTED: Tightened vertical search window down to 2050 max
+            for (int y = 1600; y < 2050; y++) {
                 if (hasTextureContrast(bmp, targetX, y)) {
                     if (firstActiveY == -1) firstActiveY = y;
                     lastActiveY = y;
@@ -75,8 +75,7 @@ public class BoardDetector {
                 float bottomPct = (float) lastActiveY / H;
                 message = "Slot " + detectedSlot + " Found!\nTOP: " + String.format("%.3f", topPct) + "f\nBOTTOM: " + String.format("%.3f", bottomPct) + "f";
             } else {
-                // Let's print out what H actually is so we can double check the device height mapping
-                message = "Scanning tray...\nNo block detected between Y 1600-2400 (H=" + H + ")";
+                message = "Scanning tray...\nNo block detected between Y 1600-2050 (H=" + H + ")";
             }
 
             new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -103,6 +102,6 @@ public class BoardDetector {
                 }
             }
         }
-        return (maxLuma - minLuma) > 15; // Slightly lowered contrast threshold to catch smoother shapes
+        return (maxLuma - minLuma) > 15;
     }
 }
