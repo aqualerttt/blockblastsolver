@@ -9,14 +9,14 @@ public class BoardDetector {
     public static final int PIECES = 3;
 
     // Stable main board percentage metrics
-    public static final float BOARD_TOP_PCT    = 0.237f;
+    public static final float BOARD_TOP_PCT    = 0.242f;
     public static final float BOARD_LEFT_PCT   = 0.055f;
     public static final float BOARD_RIGHT_PCT  = 0.944f;
-    public static final float BOARD_BOTTOM_PCT = 0.677f;
+    public static final float BOARD_BOTTOM_PCT = 0.665f;
     
     // Hard baseline definition for the item tray zone
     public static final float TRAY_TOP_PCT     = 0.730f; 
-    public static final float TRAY_BOTTOM_PCT  = 0.890f; 
+    public static final float TRAY_BOTTOM_PCT  = 0.895f; 
 
     public boolean[][] board = new boolean[GRID][GRID];
     public boolean[][][] pieces = new boolean[PIECES][5][5];
