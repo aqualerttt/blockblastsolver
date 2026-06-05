@@ -1,11 +1,11 @@
 package com.blockblast.solver.overlay;
 
+import android.view.View;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.view.View;
 
 import com.blockblast.solver.detector.BoardDetector;
 import com.blockblast.solver.solver.BlockSolver;
@@ -54,8 +54,8 @@ public class OverlayView extends View {
         boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
         boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
         
-        trayTop     = 0.745f * screenH;
-        trayBottom  = 0.835f * screenH;
+        trayTop     = BoardDetector.TRAY_TOP_PCT     * screenH;
+        trayBottom  = BoardDetector.TRAY_BOTTOM_PCT  * screenH;
 
         postInvalidate();
     }
@@ -65,11 +65,11 @@ public class OverlayView extends View {
         float screenW = canvas.getWidth();
         float screenH = canvas.getHeight();
         
-        float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
+        float[] pieceCenterPct = { 0.19f, 0.50f, 0.805f };
         float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
         
         float debugCellSize = currentCellW * 0.38f; 
-        float greenBoxRadius = currentCellW * 1.3f; 
+        float greenBoxRadius = currentCellW * 1.1f; 
 
         // --- VISUAL CALIBRATION DEBUG GRIDS ---
         if (boardLeft > 0 && trayTop > 0) {
@@ -77,39 +77,36 @@ public class OverlayView extends View {
             debugPaint.setStyle(Paint.Style.STROKE);
             debugPaint.setStrokeWidth(4f);
             
-            float cy = trayTop + (trayBottom - trayTop) / 2;
+            float defaultCy = trayTop + (trayBottom - trayTop) / 2;
 
             for (int p = 0; p < 3; p++) {
                 float cx = pieceCenterPct[p] * screenW;
-                float currentCellSize = debugCellSize;
-                float currentRadius = greenBoxRadius;
+                float cy = defaultCy;
 
-                // OVERRIDE FOR THE 3RD PIECE: Force visual synchronization to raw pixels
-                if (p == 2) {
-                    cx = 857f;
-                    cy = 1818f;
-                    currentCellSize = 53f;
-                    currentRadius = 53f * 1.5f; // Box wraps tightly around the 3x3 footprint
+                // Sync the vertical tracking calculation layout positions
+                if (p == 0 || p == 2) {
+                    cy = boardBottom + (currentCellW * 1.05f);
                 }
 
                 // 1. Draw outer green box container matching layout footprint
                 debugPaint.setColor(Color.GREEN);
                 debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - currentRadius, cy - currentRadius, 
-                                cx + currentRadius, cy + currentRadius, debugPaint);
+                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius, 
+                                cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
 
                 // 2. Draw individual small red verification dots at the 25 matrix scan points
                 debugPaint.setColor(Color.RED);
                 debugPaint.setStyle(Paint.Style.FILL);
                 for (int dr = -2; dr <= 2; dr++) {
                     for (int dc = -2; dc <= 2; dc++) {
-                        float px = cx + dc * currentCellSize;
-                        float py = cy + dr * currentCellSize;
+                        float px = cx + dc * debugCellSize;
+                        float py = cy + dr * debugCellSize;
                         canvas.drawCircle(px, py, 6f, debugPaint);
                     }
                 }
             }
         }
+
         if (placements == null) return;
 
         float cellW = (boardRight - boardLeft) / BoardDetector.GRID;
