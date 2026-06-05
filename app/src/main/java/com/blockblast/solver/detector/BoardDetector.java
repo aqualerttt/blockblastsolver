@@ -13,9 +13,9 @@ public class BoardDetector {
     public static final float BOARD_RIGHT_PCT  = 0.944f;
     public static final float BOARD_BOTTOM_PCT = 0.665f;
     
-    // Kept standard for this test to isolate the size change
-    public static final float TRAY_TOP_PCT     = 0.735f; 
-    public static final float TRAY_BOTTOM_PCT  = 0.815f; 
+    // Adjusted tray vertical bounds to shift detection lower
+    public static final float TRAY_TOP_PCT     = 0.745f; 
+    public static final float TRAY_BOTTOM_PCT  = 0.835f; 
 
     public static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
 
@@ -41,14 +41,14 @@ public class BoardDetector {
         this.debugTrayTop = (int)(TRAY_TOP_PCT * H);
         this.debugTrayBottom = (int)(TRAY_BOTTOM_PCT * H);
         
-        // TEST VALUE: Dropped from 0.38f down to 0.15f to make it extremely small
-        this.debugCellSize = (int)(cellW * 0.15f); 
+        // Match tight spacing calculation (38% of cell width)
+        this.debugCellSize = (int)(cellW * 0.38f); 
 
         for (int p = 0; p < PIECES; p++) {
             this.debugPieceX[p] = (int)(PIECE_CENTER_X[p] * W);
         }
 
-        // 1. Scan Board
+        // 1. Scan Main Board
         for (int row = 0; row < GRID; row++) {
             for (int col = 0; col < GRID; col++) {
                 int px = left + col * cellW + cellW / 2;
@@ -61,7 +61,7 @@ public class BoardDetector {
             }
         }
 
-        // 2. Scan Pieces via Matrix Points
+        // 2. Scan Pieces
         int trayH = debugTrayBottom - debugTrayTop;
         int cy = debugTrayTop + trayH / 2;
 
