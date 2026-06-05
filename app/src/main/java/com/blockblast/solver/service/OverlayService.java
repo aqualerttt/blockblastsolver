@@ -50,7 +50,7 @@ public class OverlayService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(NOTIF_ID, buildNotification());
 
-        int    resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1);
+        int      resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, -1);
         Intent resultData = intent.getParcelableExtra(EXTRA_RESULT_DATA);
 
         DisplayMetrics dm = getResources().getDisplayMetrics();
@@ -58,20 +58,33 @@ public class OverlayService extends Service {
         screenH   = dm.heightPixels;
         screenDpi = dm.densityDpi;
 
-        // Set up MediaProjection
+        // Set up MediaProjection using your variable names
         MediaProjectionManager mpm =
                 (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         projection = mpm.getMediaProjection(resultCode, resultData);
+
+        // Android 14+ Security Callback Registration
+        if (android.os.Build.VERSION.SDK_INT >= 34 && projection != null) {
+            projection.registerCallback(new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    super.onStop();
+                }
+            }, new Handler(Looper.getMainLooper()));
+        }
 
         // ImageReader captures screen frames
         imageReader = ImageReader.newInstance(screenW, screenH,
                 PixelFormat.RGBA_8888, 2);
 
-        virtualDisplay = projection.createVirtualDisplay(
-                "BlockBlastCapture",
-                screenW, screenH, screenDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(), null, null);
+        // Create the actual virtual display underneath the callback
+        if (projection != null) {
+            virtualDisplay = projection.createVirtualDisplay(
+                    "BlockBlastCapture",
+                    screenW, screenH, screenDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(), null, null);
+        }
 
         // Add overlay
         addOverlay();
@@ -112,6 +125,7 @@ public class OverlayService extends Service {
     };
 
     private void analyseFrame() {
+        if (imageReader == null) return;
         Image img = imageReader.acquireLatestImage();
         if (img == null) return;
 
