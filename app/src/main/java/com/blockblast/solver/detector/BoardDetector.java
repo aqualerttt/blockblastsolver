@@ -23,8 +23,8 @@ public static final float BOARD_TOP_PCT    = 0.225f; // Decreased from 0.232 to 
 public static final float BOARD_LEFT_PCT   = 0.055f; // KEPT (Perfect!)
 public static final float BOARD_RIGHT_PCT  = 0.944f; // KEPT (Perfect!)
 public static final float BOARD_BOTTOM_PCT = 0.665f; // Increased from 0.654 to push the bottom line FURTHER DOWN
-public static final float TRAY_TOP_PCT     = 0.755f;
-public static final float TRAY_BOTTOM_PCT  = 0.885f;
+public static final float TRAY_TOP_PCT     = 0.735f;
+public static final float TRAY_BOTTOM_PCT  = 0.815f;
 
     // Piece tray columns (left-centre of each of the 3 slots)
     private static final float[] PIECE_CENTER_X = { 0.15f, 0.50f, 0.83f };
@@ -86,7 +86,7 @@ public static final float TRAY_BOTTOM_PCT  = 0.885f;
         // Approximate cell size within tray (same as board cell width)
         int boardLeft  = (int)(BOARD_LEFT_PCT  * W);
         int boardRight = (int)(BOARD_RIGHT_PCT * W);
-        int cellPx     = (boardRight - boardLeft) / GRID;
+        int cellPx = (int)(((boardRight - boardLeft) / GRID) * 0.60f);
 
         for (int p = 0; p < PIECES; p++) {
             int cx = (int)(PIECE_CENTER_X[p] * W);
