@@ -18,18 +18,28 @@ public class OverlayView extends View {
             0xAAFF4081,   // pink
     };
 
-    private static final int BOARD_COLOR   = 0x330000FF;
     private static final int STROKE_COLOR  = 0xFFFFFFFF;
 
     private final Paint fillPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint debugPaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private float boardLeft, boardTop, boardRight, boardBottom;
     private float trayTop, trayBottom;
+    private float cellW, cellH;
 
     private BlockSolver.Placement[] placements;
-    private boolean[][] board;
+    
+    // Geometry feedback arrays mapped directly from Detector thread calculations
+    private final int[] piecesMinX = new int[3];
+    private final int[] piecesMaxX = new int[3];
+    private final int[] piecesMinY = new int[3];
+    private final int[] piecesMaxY = new int[3];
+    private final boolean[] piecesActive = new boolean[3];
+    
+    private float scaleX = 1.0f;
+    private float scaleY = 1.0f;
 
     public OverlayView(Context context) {
         super(context);
@@ -42,20 +52,39 @@ public class OverlayView extends View {
         gridPaint.setStyle(Paint.Style.STROKE);
         gridPaint.setStrokeWidth(1f);
         gridPaint.setColor(0x44FFFFFF);
+
+        debugPaint.setStyle(Paint.Style.STROKE);
+        debugPaint.setStrokeWidth(4f);
     }
 
-    public void update(boolean[][] board, BlockSolver.Placement[] placements,
-                       int screenW, int screenH) {
-        this.board      = board;
+    public void update(BoardDetector detector, BlockSolver.Placement[] placements, int screenW, int screenH) {
         this.placements = placements;
 
-        boardLeft   = BoardDetector.BOARD_LEFT_PCT   * screenW;
-        boardTop    = BoardDetector.BOARD_TOP_PCT    * screenH;
-        boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
-        boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
+        // Calculate scaling offsets if canvas display properties slightly mismatch raw image targets
+        if (detector.debugW > 0 && detector.debugH > 0) {
+            this.scaleX = (float) screenW / detector.debugW;
+            this.scaleY = (float) screenH / detector.debugH;
+        }
+
+        this.boardLeft   = BoardDetector.BOARD_LEFT_PCT   * screenW;
+        this.boardTop    = BoardDetector.BOARD_TOP_PCT    * screenH;
+        this.boardRight  = BoardDetector.BOARD_RIGHT_PCT  * screenW;
+        this.boardBottom = BoardDetector.BOARD_BOTTOM_PCT * screenH;
         
-        trayTop     = BoardDetector.TRAY_TOP_PCT     * screenH;
-        trayBottom  = BoardDetector.TRAY_BOTTOM_PCT  * screenH;
+        this.trayTop     = BoardDetector.TRAY_TOP_PCT     * screenH;
+        this.trayBottom  = BoardDetector.TRAY_BOTTOM_PCT  * screenH;
+
+        this.cellW = (boardRight - boardLeft) / BoardDetector.GRID;
+        this.cellH = (boardBottom - boardTop) / BoardDetector.GRID;
+
+        // Extract raw tracking dimensions from scanning state
+        for (int p = 0; p < 3; p++) {
+            this.piecesActive[p] = detector.slotHasPiece[p];
+            this.piecesMinX[p]   = detector.detectedMinX[p];
+            this.piecesMaxX[p]   = detector.detectedMaxX[p];
+            this.piecesMinY[p]   = detector.detectedMinY[p];
+            this.piecesMaxY[p]   = detector.detectedMaxY[p];
+        }
 
         postInvalidate();
     }
@@ -63,54 +92,43 @@ public class OverlayView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         float screenW = canvas.getWidth();
-        float screenH = canvas.getHeight();
         
-        float[] pieceCenterPct = { 0.19f, 0.50f, 0.81f };
-        float currentCellW = (boardRight - boardLeft) / BoardDetector.GRID;
-        
-        float debugCellSize = currentCellW * 0.38f; 
-        float greenBoxRadius = currentCellW * 1.2f; 
+        // 1. Draw Adaptive Search Columns (Yellow Window Targets)
+        float[][] slotBoundsX = {
+            {0.03f * screenW, 0.36f * screenW},
+            {0.36f * screenW, 0.64f * screenW},
+            {0.64f * screenW, 0.97f * screenW}
+        };
 
-        // --- VISUAL CALIBRATION DEBUG GRIDS ---
-        if (boardLeft > 0 && trayTop > 0) {
-            Paint debugPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-            debugPaint.setStyle(Paint.Style.STROKE);
-            debugPaint.setStrokeWidth(4f);
-            
-            float cy = trayTop + (trayBottom - trayTop) / 2;
+        debugPaint.setStyle(Paint.Style.STROKE);
+        for (int p = 0; p < 3; p++) {
+            debugPaint.setColor(Color.YELLOW);
+            debugPaint.setStrokeWidth(2f);
+            canvas.drawRect(slotBoundsX[p][0], trayTop, slotBoundsX[p][1], trayBottom, debugPaint);
 
-            for (int p = 0; p < 3; p++) {
-                float cx = pieceCenterPct[p] * screenW;
-
-                // 1. Draw outer green box container matching layout footprint
+            // 2. Draw Green Alignment Rects over the tracked bounding box bounds
+            if (piecesActive[p]) {
                 debugPaint.setColor(Color.GREEN);
-                debugPaint.setStyle(Paint.Style.STROKE);
-                canvas.drawRect(cx - greenBoxRadius, cy - greenBoxRadius, 
-                                cx + greenBoxRadius, cy + greenBoxRadius, debugPaint);
-
-                // 2. Draw individual small red verification dots at the 25 matrix scan points
-                debugPaint.setColor(Color.RED);
-                debugPaint.setStyle(Paint.Style.FILL);
-                for (int dr = -2; dr <= 2; dr++) {
-                    for (int dc = -2; dc <= 2; dc++) {
-                        float px = cx + dc * debugCellSize;
-                        float py = cy + dr * debugCellSize;
-                        canvas.drawCircle(px, py, 6f, debugPaint);
-                    }
-                }
+                debugPaint.setStrokeWidth(4f);
+                canvas.drawRect(
+                        piecesMinX[p] * scaleX, 
+                        piecesMinY[p] * scaleY, 
+                        piecesMaxX[p] * scaleX, 
+                        piecesMaxY[p] * scaleY, 
+                        debugPaint
+                );
             }
         }
 
-        if (placements == null) return;
-
-        float cellW = (boardRight - boardLeft) / BoardDetector.GRID;
-        float cellH = (boardBottom - boardTop) / BoardDetector.GRID;
-
+        // 3. Draw Game Grid Matrix Base Lines
         for (int r = 0; r <= BoardDetector.GRID; r++)
             canvas.drawLine(boardLeft, boardTop + r * cellH, boardRight, boardTop + r * cellH, gridPaint);
         for (int c = 0; c <= BoardDetector.GRID; c++)
             canvas.drawLine(boardLeft + c * cellW, boardTop, boardLeft + c * cellW, boardBottom, gridPaint);
 
+        if (placements == null) return;
+
+        // 4. Render Solved Optimal Move Output Recommendations
         for (int p = 0; p < placements.length; p++) {
             BlockSolver.Placement pl = placements[p];
             if (pl == null) continue;
@@ -139,12 +157,10 @@ public class OverlayView extends View {
             fillPaint.setColor(Color.WHITE);
             fillPaint.setTextSize(36f);
             fillPaint.setStyle(Paint.Style.FILL);
-            BlockSolver.Placement first = pl;
             canvas.drawText("P" + (p + 1),
-                    boardLeft + first.col * cellW + 4,
-                    boardTop  + first.row * cellH + 40,
+                    boardLeft + pl.col * cellW + 8,
+                    boardTop  + pl.row * cellH + 42,
                     fillPaint);
-            fillPaint.setStyle(Paint.Style.FILL);
         }
     }
 }
